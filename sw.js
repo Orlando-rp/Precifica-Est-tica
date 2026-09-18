@@ -1,6 +1,6 @@
 // Service worker: guarda os arquivos para uso offline e busca a rede primeiro,
 // assim quem tem o PWA instalado recebe a versão nova assim que tiver internet.
-const CACHE = 'precifica-estetica-v5';
+const CACHE = 'precifica-estetica-v6';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.json'];
 const TIMEOUT_REDE = 4000; // se a rede demorar, usa o que está salvo
 

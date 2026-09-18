@@ -1054,28 +1054,73 @@ function mostrarAvisoAtualizacao() {
   document.getElementById('btnAtualizarApp').addEventListener('click', () => window.location.reload());
 }
 
-// registra o service worker (funciona offline após primeira visita)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    // updateViaCache: 'none' garante que o próprio sw.js seja sempre buscado na rede
-    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
-      // já havia uma versão nova pronta de uma visita anterior
-      if (reg.waiting && navigator.serviceWorker.controller) mostrarAvisoAtualizacao();
+// A "assinatura" do app.js publicado (ETag ou Last-Modified) muda a cada deploy.
+// Comparar isso é mais confiável do que esperar o sw.js mudar: um deploy que só
+// mexe no app.js ou no index.html também é detectado.
+let assinaturaApp = null;
 
-      reg.addEventListener('updatefound', () => {
-        const novo = reg.installing;
-        if (!novo) return;
-        novo.addEventListener('statechange', () => {
-          // com um service worker já no controle, "installed" significa atualização (não primeira visita)
-          if (novo.state === 'installed' && navigator.serviceWorker.controller) mostrarAvisoAtualizacao();
-        });
-      });
+function lerAssinaturaApp() {
+  // no-store: nunca responde do cache, sempre pergunta ao servidor
+  return fetch('app.js', { method: 'HEAD', cache: 'no-store' })
+    .then((res) => (res.ok ? { etag: res.headers.get('etag'), data: res.headers.get('last-modified') } : null))
+    .catch(() => null);
+}
 
-      // procura atualização ao abrir, ao voltar para o app e a cada hora aberto
-      const procurar = () => reg.update().catch(() => {});
-      procurar();
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') procurar(); });
-      setInterval(procurar, 60 * 60 * 1000);
-    }).catch(() => {});
+function mostrarVersaoNosAjustes(data) {
+  const el = document.getElementById('subVersao');
+  if (!el) return;
+  if (!data) { el.textContent = 'não foi possível verificar agora'; return; }
+  const d = new Date(data);
+  el.textContent = isNaN(d) ? 'atualizada' : 'atualizada em ' + d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function verificarVersaoNova() {
+  return lerAssinaturaApp().then((atual) => {
+    // sem rede: mantém a data que já estava na tela, se houver
+    if (!atual) { if (assinaturaApp === null) mostrarVersaoNosAjustes(null); return; }
+    const marca = atual.etag || atual.data;
+    if (assinaturaApp === null) {
+      assinaturaApp = marca;
+      mostrarVersaoNosAjustes(atual.data);
+      return;
+    }
+    if (marca && marca !== assinaturaApp) mostrarAvisoAtualizacao();
   });
 }
+
+// procura atualização ao abrir, ao voltar para o app e a cada hora aberto
+function procurarAtualizacao() {
+  verificarVersaoNova();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then((reg) => { if (reg) reg.update().catch(() => {}); }).catch(() => {});
+  }
+}
+
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') procurarAtualizacao(); });
+setInterval(procurarAtualizacao, 60 * 60 * 1000);
+document.getElementById('rowVersao').addEventListener('click', () => {
+  mostrarToast('Procurando atualização…');
+  procurarAtualizacao();
+});
+
+// registra o service worker (funciona offline após primeira visita)
+window.addEventListener('load', () => {
+  verificarVersaoNova();
+  if (!('serviceWorker' in navigator)) return;
+  // updateViaCache: 'none' garante que o próprio sw.js seja sempre buscado na rede
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+    // já havia uma versão nova pronta de uma visita anterior
+    if (reg.waiting && navigator.serviceWorker.controller) mostrarAvisoAtualizacao();
+
+    reg.addEventListener('updatefound', () => {
+      const novo = reg.installing;
+      if (!novo) return;
+      novo.addEventListener('statechange', () => {
+        // com um service worker já no controle, "installed" significa atualização (não primeira visita)
+        if (novo.state === 'installed' && navigator.serviceWorker.controller) mostrarAvisoAtualizacao();
+      });
+    });
+
+    reg.update().catch(() => {});
+  }).catch(() => {});
+});
