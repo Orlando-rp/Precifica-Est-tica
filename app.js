@@ -1070,9 +1070,41 @@ if (!jaViuIntroducao) {
   mostrarTela('servicos');
 }
 
+// ---------- atualização do app instalado (PWA) ----------
+// Mostra uma barra avisando quando existe versão nova; um toque recarrega com os arquivos novos.
+function mostrarAvisoAtualizacao() {
+  if (document.getElementById('updateBar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'updateBar';
+  bar.className = 'update-bar';
+  bar.innerHTML = '<span>Nova versão disponível.</span><button type="button" id="btnAtualizarApp">Atualizar</button>';
+  document.body.appendChild(bar);
+  requestAnimationFrame(() => bar.classList.add('show'));
+  document.getElementById('btnAtualizarApp').addEventListener('click', () => window.location.reload());
+}
+
 // registra o service worker (funciona offline após primeira visita)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    // updateViaCache: 'none' garante que o próprio sw.js seja sempre buscado na rede
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+      // já havia uma versão nova pronta de uma visita anterior
+      if (reg.waiting && navigator.serviceWorker.controller) mostrarAvisoAtualizacao();
+
+      reg.addEventListener('updatefound', () => {
+        const novo = reg.installing;
+        if (!novo) return;
+        novo.addEventListener('statechange', () => {
+          // com um service worker já no controle, "installed" significa atualização (não primeira visita)
+          if (novo.state === 'installed' && navigator.serviceWorker.controller) mostrarAvisoAtualizacao();
+        });
+      });
+
+      // procura atualização ao abrir, ao voltar para o app e a cada hora aberto
+      const procurar = () => reg.update().catch(() => {});
+      procurar();
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') procurar(); });
+      setInterval(procurar, 60 * 60 * 1000);
+    }).catch(() => {});
   });
 }

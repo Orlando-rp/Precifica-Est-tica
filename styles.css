@@ -367,6 +367,23 @@ main#views{
 }
 .toast.show{opacity:1;transform:translateY(0);}
 
+/* barra de "nova versão disponível" (PWA instalado) */
+.update-bar{
+  position:fixed;left:16px;right:16px;top:calc(12px + env(safe-area-inset-top,0px));
+  max-width:560px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:var(--text);color:var(--bg);
+  padding:11px 12px 11px 16px;border-radius:12px;font-size:13.5px;font-weight:600;
+  box-shadow:0 10px 24px -8px rgba(0,0,0,.4);
+  z-index:70;opacity:0;transform:translateY(-8px);
+  transition:opacity .2s ease, transform .2s ease;
+}
+.update-bar.show{opacity:1;transform:translateY(0);}
+.update-bar button{
+  background:var(--bg);color:var(--text);border:0;
+  padding:8px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;
+}
+
 /* alerta no dashboard */
 .card.alert{border-color:var(--red);}
 .card.alert h3{color:var(--red);}
