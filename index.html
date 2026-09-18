@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Precifica Estética</title>
+<meta name="description" content="Calculadora de precificação para estética automotiva fixa e delivery" />
+<meta name="theme-color" content="#0d1512" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- cabeçalho: modo normal (marca) ou modo "dentro de uma etapa" (voltar) -->
+  <header class="topbar" id="topbar">
+    <div class="brand" id="brandArea">
+      <span class="brand-icon" aria-hidden="true">🚗</span>
+      <span class="brand-name">Precifica Estética</span>
+    </div>
+    <button class="back-btn" id="btnVoltarHeader" hidden aria-label="Voltar">
+      <span aria-hidden="true">←</span><span id="tituloTela">Voltar</span>
+    </button>
+    <button id="btnAjuda" class="icon-btn" aria-label="Ajuda / como usar">?</button>
+  </header>
+
+  <!-- barra de progresso, só aparece durante a configuração inicial -->
+  <div class="stepper" id="stepper" hidden>
+    <div class="stepper-label" id="stepperLabel">Passo 1 de 2</div>
+    <div class="stepper-track"><div class="stepper-fill" id="stepperFill"></div></div>
+  </div>
+
+  <main id="views">
+
+    <!-- ETAPA 1 — CUSTOS FIXOS -->
+    <section id="view-custos" class="view">
+      <div class="section-intro">
+        <h1>Suas contas fixas</h1>
+        <p>Lance o que você paga <strong>todo mês</strong>, tenha trabalho ou não (aluguel, internet, MEI...). É o primeiro passo: sem isso, o app não sabe quanto custa uma hora do seu trabalho.</p>
+      </div>
+
+      <div class="card">
+        <div class="field-row">
+          <label>Dias que você trabalha por mês
+            <button class="info-btn" data-info="info-dias" aria-label="O que é isso?">i</button>
+          </label>
+          <input type="number" id="diasUteis" min="1" step="1" value="25" inputmode="numeric" />
+        </div>
+        <p class="info-pop" id="info-dias" hidden>Ex.: se você trabalha de segunda a sábado e folga alguns dias no mês, algo entre 22 e 26 é comum.</p>
+
+        <div class="field-row">
+          <label>Horas de trabalho por dia
+            <button class="info-btn" data-info="info-horas" aria-label="O que é isso?">i</button>
+          </label>
+          <input type="number" id="horasDia" min="1" step="0.5" value="9" inputmode="decimal" />
+        </div>
+        <p class="info-pop" id="info-horas" hidden>Quantas horas por dia você (ou sua equipe) fica disponível para atender clientes.</p>
+      </div>
+
+      <p class="group-label">Suas despesas mensais</p>
+      <div id="listaCustos" class="cards"></div>
+      <button id="btnNovoCusto" class="btn-secondary">+ Adicionar despesa fixa</button>
+
+      <div class="card total-card">
+        <div class="total-line"><span>Total de despesas por mês</span><strong id="totalFixoMes">R$ 0,00</strong></div>
+        <div class="total-line"><span>Isso dá, por dia</span><strong id="totalFixoDia">R$ 0,00</strong></div>
+        <div class="total-line highlight"><span>Custo da sua hora de trabalho</span><strong id="totalFixoHora">R$ 0,00</strong></div>
+      </div>
+    </section>
+
+    <!-- ETAPA 2 — PRODUTOS E INSUMOS -->
+    <section id="view-insumos" class="view">
+      <div class="section-intro">
+        <h1>Produtos que você usa</h1>
+        <p>Cadastre os produtos que você compra (shampoo, cera, panos...) informando <strong>quanto veio</strong> e <strong>quanto pagou</strong>. O app calcula o custo por ml/g/unidade sozinho — depois é só dizer quanto usou em cada serviço.</p>
+      </div>
+
+      <p class="group-label">Seus produtos</p>
+      <div id="listaInsumos" class="cards"></div>
+      <button id="btnNovoInsumo" class="btn-secondary">+ Adicionar produto</button>
+    </section>
+
+    <!-- ETAPA 3 — TAXAS E MARGEM -->
+    <section id="view-taxas" class="view">
+      <div class="section-intro">
+        <h1>Taxas e sua margem</h1>
+        <p>Agora, o que sai de cada venda e o quanto você quer <strong>ganhar de lucro</strong> em cima do custo de cada serviço.</p>
+      </div>
+      <div class="card">
+        <div class="field-row">
+          <label>Taxa da maquininha / cartão (%)
+            <button class="info-btn" data-info="info-taxa" aria-label="O que é isso?">i</button>
+          </label>
+          <input type="number" id="taxaOperacao" min="0" step="0.1" value="5" inputmode="decimal" />
+        </div>
+        <p class="info-pop" id="info-taxa" hidden>A porcentagem que a operadora de cartão ou app de pagamento desconta de você em cada venda. Se não usa cartão, deixe 0.</p>
+
+        <div class="field-row">
+          <label>Comissão de terceiros (%)
+            <button class="info-btn" data-info="info-comissao" aria-label="O que é isso?">i</button>
+          </label>
+          <input type="number" id="comissao" min="0" step="0.1" value="0" inputmode="decimal" />
+        </div>
+        <p class="info-pop" id="info-comissao" hidden>Use se paga comissão para quem indicou o cliente, um app de agendamento, ou um funcionário por serviço.</p>
+
+        <div class="field-row">
+          <label>Imposto (%)
+            <button class="info-btn" data-info="info-imposto" aria-label="O que é isso?">i</button>
+          </label>
+          <input type="number" id="imposto" min="0" step="0.1" value="0" inputmode="decimal" />
+        </div>
+        <p class="info-pop" id="info-imposto" hidden>Se você é MEI com valor fixo mensal, pode deixar 0 aqui (já está nas contas fixas). Use se paga imposto por venda (ex.: Simples Nacional).</p>
+
+        <div class="field-row">
+          <label>Margem de lucro que você quer (%)
+            <button class="info-btn" data-info="info-margem" aria-label="O que é isso?">i</button>
+          </label>
+          <input type="number" id="margemDesejada" min="0" step="1" value="40" inputmode="decimal" />
+        </div>
+        <p class="info-pop" id="info-margem" hidden>O quanto deve sobrar de lucro sobre o preço final de cada serviço. 40% é um ponto de partida comum na estética automotiva — ajuste conforme sua realidade.</p>
+
+        <div class="field-row">
+          <label>Custo por km rodado no delivery (R$)
+            <button class="info-btn" data-info="info-km" aria-label="O que é isso?">i</button>
+          </label>
+          <input type="number" id="custoKm" min="0" step="0.05" value="1.20" inputmode="decimal" />
+        </div>
+        <p class="info-pop" id="info-km" hidden>Cobre combustível + desgaste do veículo por km rodado (ida e volta) até o cliente. Só é usado no modo Delivery.</p>
+      </div>
+    </section>
+
+    <!-- RESULTADO — SERVIÇOS PRECIFICADOS (tela principal) -->
+    <section id="view-servicos" class="view">
+      <div class="section-intro">
+        <h1>Seus serviços precificados</h1>
+        <p>O resultado final: quanto cobrar em cada serviço para ter lucro de verdade.</p>
+      </div>
+
+      <div class="result-strip" id="resultStrip"></div>
+
+      <div class="toolbar">
+        <div class="segmented" id="modoAtendimento">
+          <button class="seg-btn active" data-modo="fixo">🏠 Loja fixa</button>
+          <button class="seg-btn" data-modo="delivery">🚚 Delivery / a domicílio</button>
+        </div>
+        <p class="hint-inline" id="modoExplicacao">No modo <strong>loja fixa</strong>, o cliente vem até você.</p>
+      </div>
+
+      <p class="group-label">Toque em um serviço para ver os detalhes</p>
+      <div id="listaServicos" class="cards"></div>
+    </section>
+
+    <!-- AJUSTES (menu) -->
+    <section id="view-ajustes" class="view">
+      <div class="section-intro">
+        <h1>Ajustes</h1>
+        <p>Revise as informações usadas para calcular seus preços.</p>
+      </div>
+      <div class="settings-list">
+        <button class="settings-row" id="rowCustos">
+          <span class="settings-icon">🧾</span>
+          <span class="settings-text">
+            <span class="settings-title">Contas fixas</span>
+            <span class="settings-sub" id="subCustos">—</span>
+          </span>
+          <span class="settings-arrow">›</span>
+        </button>
+        <button class="settings-row" id="rowInsumos">
+          <span class="settings-icon">🧴</span>
+          <span class="settings-text">
+            <span class="settings-title">Produtos e insumos</span>
+            <span class="settings-sub" id="subInsumos">—</span>
+          </span>
+          <span class="settings-arrow">›</span>
+        </button>
+        <button class="settings-row" id="rowTaxas">
+          <span class="settings-icon">%</span>
+          <span class="settings-text">
+            <span class="settings-title">Taxas e margem</span>
+            <span class="settings-sub" id="subTaxas">—</span>
+          </span>
+          <span class="settings-arrow">›</span>
+        </button>
+        <button class="settings-row" id="rowBackup">
+          <span class="settings-icon">💾</span>
+          <span class="settings-text">
+            <span class="settings-title">Backup dos dados</span>
+            <span class="settings-sub">Exportar ou importar</span>
+          </span>
+          <span class="settings-arrow">›</span>
+        </button>
+        <button class="settings-row" id="rowComoInstalar">
+          <span class="settings-icon">📲</span>
+          <span class="settings-text">
+            <span class="settings-title">Como instalar no celular</span>
+            <span class="settings-sub">Adicionar à tela inicial (Android/iPhone)</span>
+          </span>
+          <span class="settings-arrow">›</span>
+        </button>
+        <button class="settings-row" id="rowTutorial">
+          <span class="settings-icon">👋</span>
+          <span class="settings-text">
+            <span class="settings-title">Ver tutorial novamente</span>
+            <span class="settings-sub">Como o app funciona</span>
+          </span>
+          <span class="settings-arrow">›</span>
+        </button>
+        <button class="settings-row" id="rowReiniciar">
+          <span class="settings-icon">🔄</span>
+          <span class="settings-text">
+            <span class="settings-title">Refazer configuração inicial</span>
+            <span class="settings-sub">Abre o guia do começo, do zero</span>
+          </span>
+          <span class="settings-arrow">›</span>
+        </button>
+        <button class="settings-row" id="rowApoie">
+          <span class="settings-icon">💚</span>
+          <span class="settings-text">
+            <span class="settings-title">Apoiar o desenvolvimento</span>
+            <span class="settings-sub">Contribua com qualquer valor via Pix</span>
+          </span>
+          <span class="settings-arrow">›</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- APOIE / DOAÇÃO -->
+    <section id="view-apoie" class="view">
+      <div class="section-intro">
+        <h1>Apoie este projeto</h1>
+        <p>Este app é gratuito e sem anúncios. Se ele te ajudou a precificar melhor seus serviços e você quiser retribuir, qualquer valor via Pix é muito bem-vindo — isso ajuda a manter e melhorar o app.</p>
+      </div>
+
+      <div class="card pix-card">
+        <span class="pix-label">Chave Pix aleatória</span>
+        <div class="pix-key" id="pixKey">549501a2-3480-4eb1-8204-c3faca345bc5</div>
+        <button class="btn-primary" id="btnCopiarPix">📋 Copiar chave Pix</button>
+        <p class="pix-note" id="pixNote">Cole no app do seu banco, na opção "Pix" → "chave aleatória".</p>
+      </div>
+
+      <p class="hint" style="text-align:center">Nenhuma contribuição é obrigatória — o app continua completo e gratuito de qualquer forma. Obrigado! 🙏</p>
+    </section>
+
+    <!-- BACKUP -->
+    <section id="view-backup" class="view">
+      <div class="section-intro">
+        <h1>Backup dos dados</h1>
+        <p>Tudo fica salvo só neste celular/navegador — nada vai para nenhum servidor. Exporte de vez em quando para não perder nada se trocar de aparelho.</p>
+      </div>
+      <div class="card">
+        <div class="btn-row">
+          <button id="btnExport" class="btn-secondary">⬇️ Exportar backup</button>
+          <button id="btnImport" class="btn-secondary">⬆️ Importar backup</button>
+          <input type="file" id="inputImport" accept="application/json" hidden />
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- rodapé da etapa (configuração inicial ou edição vinda de Ajustes) -->
+  <div class="wizard-footer" id="wizardFooter" hidden>
+    <button class="btn-primary" id="btnWizardContinuar">Continuar</button>
+  </div>
+
+  <button id="btnNovoServico" class="fab" hidden>+ Novo serviço</button>
+
+  <nav class="tabbar" id="tabs">
+    <button class="tab active" data-tab="servicos"><span class="tab-icon">💰</span><span>Serviços</span></button>
+    <button class="tab" data-tab="ajustes"><span class="tab-icon">⚙️</span><span>Ajustes</span></button>
+  </nav>
+
+</div>
+
+<div id="modalRoot"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
