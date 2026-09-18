@@ -60,7 +60,11 @@ function load() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return structuredClone(DEFAULT_STATE);
     const parsed = JSON.parse(raw);
-    return Object.assign(structuredClone(DEFAULT_STATE), parsed);
+    const carregado = Object.assign(structuredClone(DEFAULT_STATE), parsed);
+    // o campo pode ter sido salvo vazio enquanto a pessoa digitava
+    if (!(Number(carregado.diasUteis) >= 1)) carregado.diasUteis = DEFAULT_STATE.diasUteis;
+    if (!(Number(carregado.horasDia) >= 1)) carregado.horasDia = DEFAULT_STATE.horasDia;
+    return carregado;
   } catch (e) {
     console.warn('Falha ao carregar dados salvos, usando padrão.', e);
     return structuredClone(DEFAULT_STATE);
@@ -318,12 +322,39 @@ document.addEventListener('click', (e) => {
 // ---------- CONTAS FIXAS ----------
 const diasUteisInput = document.getElementById('diasUteis');
 const horasDiaInput = document.getElementById('horasDia');
-diasUteisInput.addEventListener('input', () => { state.diasUteis = Number(diasUteisInput.value) || 1; save(); renderCustos(); atualizarResultado(); });
-horasDiaInput.addEventListener('input', () => { state.horasDia = Number(horasDiaInput.value) || 1; save(); renderCustos(); atualizarResultado(); });
+// enquanto a pessoa digita, o campo pode ficar vazio: guardamos '' em vez de forçar 1,
+// senão o 1 volta sozinho e atrapalha a digitação. Os cálculos já tratam vazio como 1.
+function lerCampoNumerico(input) {
+  const raw = input.value.trim();
+  if (raw === '') return '';
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : '';
+}
+
+// só escreve no campo quando ele não está em uso, para não mexer no que está sendo digitado
+function preencherCampo(input, valor) {
+  if (document.activeElement === input) return;
+  input.value = valor;
+}
+
+function normalizarCampoMinimo(input, chave) {
+  const n = Number(state[chave]);
+  const valido = Number.isFinite(n) && n >= 1 ? n : 1;
+  state[chave] = valido;
+  input.value = valido;
+  save();
+  renderTotaisFixos();
+  atualizarResultado();
+}
+
+diasUteisInput.addEventListener('input', () => { state.diasUteis = lerCampoNumerico(diasUteisInput); save(); renderTotaisFixos(); atualizarResultado(); });
+horasDiaInput.addEventListener('input', () => { state.horasDia = lerCampoNumerico(horasDiaInput); save(); renderTotaisFixos(); atualizarResultado(); });
+diasUteisInput.addEventListener('blur', () => normalizarCampoMinimo(diasUteisInput, 'diasUteis'));
+horasDiaInput.addEventListener('blur', () => normalizarCampoMinimo(horasDiaInput, 'horasDia'));
 
 function renderCustos() {
-  diasUteisInput.value = state.diasUteis;
-  horasDiaInput.value = state.horasDia;
+  preencherCampo(diasUteisInput, state.diasUteis);
+  preencherCampo(horasDiaInput, state.horasDia);
 
   const wrap = document.getElementById('listaCustos');
   wrap.innerHTML = '';

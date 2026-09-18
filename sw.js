@@ -1,5 +1,5 @@
 // Service worker simples: cacheia os arquivos do app para uso 100% offline.
-const CACHE = 'precifica-estetica-v1';
+const CACHE = 'precifica-estetica-v2';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.json'];
 
 self.addEventListener('install', (event) => {
