@@ -13,8 +13,6 @@ const DEFAULT_STATE = {
   comissao: 0,
   imposto: 0,
   margemDesejada: 40,
-  custoKm: 1.2,
-  modoAtendimento: 'fixo', // 'fixo' | 'delivery'
   insumos: [
     { id: uid(), nome: 'Shampoo automotivo', unidade: 'ml', qtdComprada: 1000, valorPago: 0 },
     { id: uid(), nome: 'Cera / selante', unidade: 'ml', qtdComprada: 500, valorPago: 0 },
@@ -32,9 +30,9 @@ const DEFAULT_STATE = {
     { id: uid(), nome: 'Marketing', valor: 0 },
   ],
   servicos: [
-    { id: uid(), nome: 'Lavagem Essencial', categoria: 'lavagem', tempoHoras: 1, custoVariavel: 15, distanciaKm: 0, valorCobrado: 80, exemplo: true },
-    { id: uid(), nome: 'Lavagem Detalhada', categoria: 'lavagem', tempoHoras: 2.5, custoVariavel: 30, distanciaKm: 0, valorCobrado: 180, exemplo: true },
-    { id: uid(), nome: 'Higienização de bancos', categoria: 'higienizacao', tempoHoras: 3, custoVariavel: 40, distanciaKm: 0, valorCobrado: 450, exemplo: true },
+    { id: uid(), nome: 'Lavagem Essencial', categoria: 'lavagem', tempoHoras: 1, custoVariavel: 15, valorCobrado: 80, exemplo: true },
+    { id: uid(), nome: 'Lavagem Detalhada', categoria: 'lavagem', tempoHoras: 2.5, custoVariavel: 30, valorCobrado: 180, exemplo: true },
+    { id: uid(), nome: 'Higienização de bancos', categoria: 'higienizacao', tempoHoras: 3, custoVariavel: 40, valorCobrado: 450, exemplo: true },
   ],
 };
 
@@ -60,7 +58,11 @@ function load() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return structuredClone(DEFAULT_STATE);
     const parsed = JSON.parse(raw);
-    return Object.assign(structuredClone(DEFAULT_STATE), parsed);
+    const carregado = Object.assign(structuredClone(DEFAULT_STATE), parsed);
+    // o campo pode ter sido salvo vazio enquanto a pessoa digitava
+    if (!(Number(carregado.diasUteis) >= 1)) carregado.diasUteis = DEFAULT_STATE.diasUteis;
+    if (!(Number(carregado.horasDia) >= 1)) carregado.horasDia = DEFAULT_STATE.horasDia;
+    return carregado;
   } catch (e) {
     console.warn('Falha ao carregar dados salvos, usando padrão.', e);
     return structuredClone(DEFAULT_STATE);
@@ -89,9 +91,7 @@ function calcServico(svc) {
   const { totalHora } = calcCustoFixoHora();
   const custoFixo = (Number(svc.tempoHoras) || 0) * totalHora;
   const custoVariavel = Number(svc.custoVariavel) || 0;
-  const isDelivery = state.modoAtendimento === 'delivery';
-  const custoDeslocamento = isDelivery ? (Number(svc.distanciaKm) || 0) * (Number(state.custoKm) || 0) : 0;
-  const custoTotal = custoFixo + custoVariavel + custoDeslocamento;
+  const custoTotal = custoFixo + custoVariavel;
 
   const margemDesejada = (Number(state.margemDesejada) || 0) / 100;
   const precoMinimo = custoTotal;
@@ -106,7 +106,7 @@ function calcServico(svc) {
   const margemReal = valorCobrado > 0 ? lucro / valorCobrado : 0;
 
   return {
-    custoFixo, custoVariavel, custoDeslocamento, custoTotal,
+    custoFixo, custoVariavel, custoTotal,
     precoMinimo, precoSugerido,
     valorCobrado, taxaOp, comissaoVal, impostoVal, recebido, lucro, margemReal,
   };
@@ -291,22 +291,6 @@ function atualizarResultado() {
   renderResultStrip();
 }
 
-// ---------- modo de atendimento ----------
-const modoExplicacoes = {
-  fixo: 'No modo <strong>loja fixa</strong>, o cliente vem até você.',
-  delivery: 'No modo <strong>delivery</strong>, você soma o custo de deslocamento (km) em cada serviço.',
-};
-document.getElementById('modoAtendimento').addEventListener('click', (e) => {
-  const btn = e.target.closest('.seg-btn');
-  if (!btn) return;
-  state.modoAtendimento = btn.dataset.modo;
-  document.querySelectorAll('#modoAtendimento .seg-btn').forEach((b) => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('modoExplicacao').innerHTML = modoExplicacoes[btn.dataset.modo];
-  save();
-  atualizarResultado();
-});
-
 // ---------- botões de ajuda (info) ----------
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.info-btn');
@@ -318,12 +302,39 @@ document.addEventListener('click', (e) => {
 // ---------- CONTAS FIXAS ----------
 const diasUteisInput = document.getElementById('diasUteis');
 const horasDiaInput = document.getElementById('horasDia');
-diasUteisInput.addEventListener('input', () => { state.diasUteis = Number(diasUteisInput.value) || 1; save(); renderCustos(); atualizarResultado(); });
-horasDiaInput.addEventListener('input', () => { state.horasDia = Number(horasDiaInput.value) || 1; save(); renderCustos(); atualizarResultado(); });
+// enquanto a pessoa digita, o campo pode ficar vazio: guardamos '' em vez de forçar 1,
+// senão o 1 volta sozinho e atrapalha a digitação. Os cálculos já tratam vazio como 1.
+function lerCampoNumerico(input) {
+  const raw = input.value.trim();
+  if (raw === '') return '';
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : '';
+}
+
+// só escreve no campo quando ele não está em uso, para não mexer no que está sendo digitado
+function preencherCampo(input, valor) {
+  if (document.activeElement === input) return;
+  input.value = valor;
+}
+
+function normalizarCampoMinimo(input, chave) {
+  const n = Number(state[chave]);
+  const valido = Number.isFinite(n) && n >= 1 ? n : 1;
+  state[chave] = valido;
+  input.value = valido;
+  save();
+  renderTotaisFixos();
+  atualizarResultado();
+}
+
+diasUteisInput.addEventListener('input', () => { state.diasUteis = lerCampoNumerico(diasUteisInput); save(); renderTotaisFixos(); atualizarResultado(); });
+horasDiaInput.addEventListener('input', () => { state.horasDia = lerCampoNumerico(horasDiaInput); save(); renderTotaisFixos(); atualizarResultado(); });
+diasUteisInput.addEventListener('blur', () => normalizarCampoMinimo(diasUteisInput, 'diasUteis'));
+horasDiaInput.addEventListener('blur', () => normalizarCampoMinimo(horasDiaInput, 'horasDia'));
 
 function renderCustos() {
-  diasUteisInput.value = state.diasUteis;
-  horasDiaInput.value = state.horasDia;
+  preencherCampo(diasUteisInput, state.diasUteis);
+  preencherCampo(horasDiaInput, state.horasDia);
 
   const wrap = document.getElementById('listaCustos');
   wrap.innerHTML = '';
@@ -447,7 +458,7 @@ document.getElementById('btnNovoInsumo').addEventListener('click', () => {
 });
 
 // ---------- TAXAS ----------
-const taxaFields = ['taxaOperacao', 'comissao', 'imposto', 'margemDesejada', 'custoKm'];
+const taxaFields = ['taxaOperacao', 'comissao', 'imposto', 'margemDesejada'];
 taxaFields.forEach((f) => {
   const el = document.getElementById(f);
   el.addEventListener('input', () => {
@@ -483,9 +494,6 @@ function renderResultStrip() {
 function renderServicos() {
   const wrap = document.getElementById('listaServicos');
   wrap.innerHTML = '';
-  document.querySelectorAll('#modoAtendimento .seg-btn').forEach((b) => {
-    b.classList.toggle('active', b.dataset.modo === state.modoAtendimento);
-  });
 
   if (state.servicos.length === 0) {
     wrap.innerHTML = '<div class="empty-state"><strong>Nenhum serviço cadastrado ainda</strong>Toque no botão "+ Novo serviço" abaixo para cadastrar o primeiro.</div>';
@@ -496,11 +504,10 @@ function renderServicos() {
     const calc = calcServico(svc);
     const card = document.createElement('div');
     card.className = 'card svc-card';
-    const isDelivery = state.modoAtendimento === 'delivery';
     card.innerHTML = `
       <div class="svc-head" data-toggle="${svc.id}">
         <div>
-          <div class="svc-title">${escapeHtml(svc.nome)}${svc.exemplo ? '<span class="chip exemplo">exemplo</span>' : ''}${isDelivery && svc.distanciaKm ? `<span class="chip delivery">${svc.distanciaKm} km</span>` : ''}</div>
+          <div class="svc-title">${escapeHtml(svc.nome)}${svc.exemplo ? '<span class="chip exemplo">exemplo</span>' : ''}</div>
           <div class="svc-sub">${svc.tempoHoras}h de trabalho · custo total ${money(calc.custoTotal)}</div>
         </div>
         <div class="svc-price">
@@ -550,9 +557,8 @@ document.getElementById('btnNovoServico').addEventListener('click', () => abrirM
 function abrirModalServico(id) {
   const editando = !!id;
   const svc = editando ? state.servicos.find((s) => s.id === id) : {
-    id: uid(), nome: '', categoria: 'lavagem', tempoHoras: 1, custoVariavel: 0, distanciaKm: 0, valorCobrado: 0,
+    id: uid(), nome: '', categoria: 'lavagem', tempoHoras: 1, custoVariavel: 0, valorCobrado: 0,
   };
-  const isDelivery = state.modoAtendimento === 'delivery';
 
   const root = document.getElementById('modalRoot');
   root.innerHTML = `
@@ -568,7 +574,6 @@ function abrirModalServico(id) {
             </select>
           </div>
           <div class="field-row"><label for="f-tempo">Quanto tempo leva (horas)</label><input type="number" id="f-tempo" min="0" step="0.25" inputmode="decimal" value="${svc.tempoHoras}" /></div>
-          ${isDelivery ? `<div class="field-row"><label for="f-distancia">Distância até o cliente (km, ida e volta)</label><input type="number" id="f-distancia" min="0" step="1" inputmode="numeric" value="${svc.distanciaKm || 0}" /></div>` : ''}
           <div class="field-row"><label for="f-valor">Valor que você cobra do cliente (R$)</label><input type="number" id="f-valor" min="0" step="1" inputmode="decimal" value="${svc.valorCobrado}" /></div>
         </div>
 
@@ -611,7 +616,6 @@ function abrirModalServico(id) {
       nome: document.getElementById('f-nome').value,
       tempoHoras: Number(document.getElementById('f-tempo').value) || 0,
       custoVariavel: calcularCustoVariavelForm(),
-      distanciaKm: isDelivery ? Number(document.getElementById('f-distancia').value) || 0 : 0,
       valorCobrado: Number(document.getElementById('f-valor').value) || 0,
     };
     const c = calcServico(tmp);
@@ -642,7 +646,6 @@ function abrirModalServico(id) {
       custoVariavel: calcularCustoVariavelForm(),
       insumosUsados,
       custoExtra,
-      distanciaKm: isDelivery ? Number(document.getElementById('f-distancia').value) || 0 : (svc.distanciaKm || 0),
       valorCobrado: Number(document.getElementById('f-valor').value) || 0,
     };
     if (editando) {
@@ -818,6 +821,8 @@ const NAVEGADORES_EMBUTIDOS = ['instagram', 'facebook', 'line', 'wechat'];
 
 function obterInstrucoes(sistema, navegador) {
   const nomeNav = NOMES_NAVEGADOR[navegador] || 'seu navegador';
+  // quando não sabemos o navegador, o título não leva nome nenhum
+  const sufixoNav = NOMES_NAVEGADOR[navegador] && navegador !== 'outro' ? ` (${nomeNav})` : '';
 
   // apps como Instagram/Facebook abrem um navegador embutido sem opção de instalar —
   // é preciso abrir no navegador de verdade primeiro
@@ -838,14 +843,13 @@ function obterInstrucoes(sistema, navegador) {
     if (navegador !== 'safari') {
       return {
         emoji: '🍎',
-        titulo: 'No iPhone, use o Safari',
-        aviso: `A Apple só deixa instalar na tela de início pelo Safari — mesmo estando no ${nomeNav} agora.`,
+        titulo: `Instalando no iPhone${sufixoNav}`,
         passos: [
-          'Toque nos <strong>⋯</strong> ou no ícone <strong>"aA"</strong> na barra de endereço.',
-          'Escolha <strong>"Abrir no Safari"</strong>.',
-          'No Safari, toque no ícone de compartilhar <strong>⬆️</strong>.',
-          'Role e toque em <strong>"Adicionar à Tela de Início"</strong> → <strong>"Adicionar"</strong>.',
+          'Toque no ícone de compartilhar <strong>⬆️</strong> (na barra de baixo ou dentro do menu <strong>⋯</strong>).',
+          'Role para baixo e toque em <strong>"Adicionar à Tela de Início"</strong>.',
+          'Toque em <strong>"Adicionar"</strong>, no canto superior direito.',
         ],
+        aviso: 'Não achou a opção? Ela existe desde o iOS 16.4 — atualize o iPhone ou faça o mesmo pelo Safari.',
       };
     }
     return {
@@ -881,7 +885,7 @@ function obterInstrucoes(sistema, navegador) {
       };
     }
     return {
-      emoji: '🤖', titulo: `Instalando no Android (${nomeNav})`,
+      emoji: '🤖', titulo: `Instalando no Android${sufixoNav}`,
       passos: [
         'Toque no menu <strong>⋮</strong>, no canto superior do navegador.',
         'Toque em <strong>"Adicionar à tela inicial"</strong> (ou "Instalar app" — às vezes o próprio navegador já sugere isso sozinho).',
@@ -1018,8 +1022,6 @@ document.getElementById('btnAjuda').addEventListener('click', abrirOnboard);
 // ---------- init ----------
 function recarregarTudo() {
   preencherTaxas();
-  document.querySelectorAll('#modoAtendimento .seg-btn').forEach((b) => b.classList.toggle('active', b.dataset.modo === state.modoAtendimento));
-  document.getElementById('modoExplicacao').innerHTML = modoExplicacoes[state.modoAtendimento];
   renderCustos();
   renderInsumos();
   renderServicos();
@@ -1039,9 +1041,86 @@ if (!jaViuIntroducao) {
   mostrarTela('servicos');
 }
 
-// registra o service worker (funciona offline após primeira visita)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+// ---------- atualização do app instalado (PWA) ----------
+// Mostra uma barra avisando quando existe versão nova; um toque recarrega com os arquivos novos.
+function mostrarAvisoAtualizacao() {
+  if (document.getElementById('updateBar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'updateBar';
+  bar.className = 'update-bar';
+  bar.innerHTML = '<span>Nova versão disponível.</span><button type="button" id="btnAtualizarApp">Atualizar</button>';
+  document.body.appendChild(bar);
+  requestAnimationFrame(() => bar.classList.add('show'));
+  document.getElementById('btnAtualizarApp').addEventListener('click', () => window.location.reload());
+}
+
+// A "assinatura" do app.js publicado (ETag ou Last-Modified) muda a cada deploy.
+// Comparar isso é mais confiável do que esperar o sw.js mudar: um deploy que só
+// mexe no app.js ou no index.html também é detectado.
+let assinaturaApp = null;
+
+function lerAssinaturaApp() {
+  // no-store: nunca responde do cache, sempre pergunta ao servidor
+  return fetch('app.js', { method: 'HEAD', cache: 'no-store' })
+    .then((res) => (res.ok ? { etag: res.headers.get('etag'), data: res.headers.get('last-modified') } : null))
+    .catch(() => null);
+}
+
+function mostrarVersaoNosAjustes(data) {
+  const el = document.getElementById('subVersao');
+  if (!el) return;
+  if (!data) { el.textContent = 'não foi possível verificar agora'; return; }
+  const d = new Date(data);
+  el.textContent = isNaN(d) ? 'atualizada' : 'atualizada em ' + d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function verificarVersaoNova() {
+  return lerAssinaturaApp().then((atual) => {
+    // sem rede: mantém a data que já estava na tela, se houver
+    if (!atual) { if (assinaturaApp === null) mostrarVersaoNosAjustes(null); return; }
+    const marca = atual.etag || atual.data;
+    if (assinaturaApp === null) {
+      assinaturaApp = marca;
+      mostrarVersaoNosAjustes(atual.data);
+      return;
+    }
+    if (marca && marca !== assinaturaApp) mostrarAvisoAtualizacao();
   });
 }
+
+// procura atualização ao abrir, ao voltar para o app e a cada hora aberto
+function procurarAtualizacao() {
+  verificarVersaoNova();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then((reg) => { if (reg) reg.update().catch(() => {}); }).catch(() => {});
+  }
+}
+
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') procurarAtualizacao(); });
+setInterval(procurarAtualizacao, 60 * 60 * 1000);
+document.getElementById('rowVersao').addEventListener('click', () => {
+  mostrarToast('Procurando atualização…');
+  procurarAtualizacao();
+});
+
+// registra o service worker (funciona offline após primeira visita)
+window.addEventListener('load', () => {
+  verificarVersaoNova();
+  if (!('serviceWorker' in navigator)) return;
+  // updateViaCache: 'none' garante que o próprio sw.js seja sempre buscado na rede
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+    // já havia uma versão nova pronta de uma visita anterior
+    if (reg.waiting && navigator.serviceWorker.controller) mostrarAvisoAtualizacao();
+
+    reg.addEventListener('updatefound', () => {
+      const novo = reg.installing;
+      if (!novo) return;
+      novo.addEventListener('statechange', () => {
+        // com um service worker já no controle, "installed" significa atualização (não primeira visita)
+        if (novo.state === 'installed' && navigator.serviceWorker.controller) mostrarAvisoAtualizacao();
+      });
+    });
+
+    reg.update().catch(() => {});
+  }).catch(() => {});
+});
