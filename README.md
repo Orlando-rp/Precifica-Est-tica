@@ -79,7 +79,7 @@ Na primeira vez o app roda essas telas como um passo a passo guiado (`ORDEM_PASS
 
 ### Atendimento a domicílio
 
-O app **não separa loja fixa de delivery**, e não guarda distância no cadastro do serviço: km é característica do cliente/atendimento, não do serviço — o mesmo "Lavagem Detalhada" pode ser feito na loja ou a 20 km dali.
+O app não guarda distância no cadastro do serviço: km é característica do cliente e do atendimento, não do serviço — o mesmo "Lavagem Detalhada" pode ser feito na sua oficina ou a 20 km dali.
 
 Quando houver deslocamento, lance o valor da viagem (combustível + desgaste) em **"Outros produtos/custos"** do serviço naquele orçamento.
 
