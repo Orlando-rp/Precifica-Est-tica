@@ -821,6 +821,8 @@ const NAVEGADORES_EMBUTIDOS = ['instagram', 'facebook', 'line', 'wechat'];
 
 function obterInstrucoes(sistema, navegador) {
   const nomeNav = NOMES_NAVEGADOR[navegador] || 'seu navegador';
+  // quando não sabemos o navegador, o título não leva nome nenhum
+  const sufixoNav = NOMES_NAVEGADOR[navegador] && navegador !== 'outro' ? ` (${nomeNav})` : '';
 
   // apps como Instagram/Facebook abrem um navegador embutido sem opção de instalar —
   // é preciso abrir no navegador de verdade primeiro
@@ -841,14 +843,13 @@ function obterInstrucoes(sistema, navegador) {
     if (navegador !== 'safari') {
       return {
         emoji: '🍎',
-        titulo: 'No iPhone, use o Safari',
-        aviso: `A Apple só deixa instalar na tela de início pelo Safari — mesmo estando no ${nomeNav} agora.`,
+        titulo: `Instalando no iPhone${sufixoNav}`,
         passos: [
-          'Toque nos <strong>⋯</strong> ou no ícone <strong>"aA"</strong> na barra de endereço.',
-          'Escolha <strong>"Abrir no Safari"</strong>.',
-          'No Safari, toque no ícone de compartilhar <strong>⬆️</strong>.',
-          'Role e toque em <strong>"Adicionar à Tela de Início"</strong> → <strong>"Adicionar"</strong>.',
+          'Toque no ícone de compartilhar <strong>⬆️</strong> (na barra de baixo ou dentro do menu <strong>⋯</strong>).',
+          'Role para baixo e toque em <strong>"Adicionar à Tela de Início"</strong>.',
+          'Toque em <strong>"Adicionar"</strong>, no canto superior direito.',
         ],
+        aviso: 'Não achou a opção? Ela existe desde o iOS 16.4 — atualize o iPhone ou faça o mesmo pelo Safari.',
       };
     }
     return {
@@ -884,7 +885,7 @@ function obterInstrucoes(sistema, navegador) {
       };
     }
     return {
-      emoji: '🤖', titulo: `Instalando no Android (${nomeNav})`,
+      emoji: '🤖', titulo: `Instalando no Android${sufixoNav}`,
       passos: [
         'Toque no menu <strong>⋮</strong>, no canto superior do navegador.',
         'Toque em <strong>"Adicionar à tela inicial"</strong> (ou "Instalar app" — às vezes o próprio navegador já sugere isso sozinho).',
