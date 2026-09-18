@@ -119,10 +119,6 @@ main#views{
 .hint{color:var(--text-dim);font-size:13px;line-height:1.5;margin:4px 0 14px;}
 .hint-inline{color:var(--text-dim);font-size:12.5px;margin:8px 2px 0;}
 
-.toolbar{margin-bottom:14px;}
-.segmented{display:flex;background:var(--surface-2);border-radius:12px;padding:4px;gap:4px;border:1px solid var(--border);}
-.seg-btn{flex:1;background:none;border:none;color:var(--text-dim);padding:11px 6px;border-radius:9px;font-size:13px;font-weight:700;}
-.seg-btn.active{background:var(--accent);color:var(--accent-ink);}
 
 .cards{display:flex;flex-direction:column;gap:14px;margin-bottom:18px;}
 .card{
@@ -268,7 +264,6 @@ main#views{
 .btn-del{background:var(--red-soft);color:var(--red);}
 
 .chip{display:inline-block;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--surface-2);color:var(--text-dim);}
-.chip.delivery{color:var(--accent);background:var(--accent-soft);}
 .chip.exemplo{color:var(--yellow);background:rgba(161,92,0,.12);}
 
 /* modal (folha inferior) */

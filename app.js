@@ -13,8 +13,6 @@ const DEFAULT_STATE = {
   comissao: 0,
   imposto: 0,
   margemDesejada: 40,
-  custoKm: 1.2,
-  modoAtendimento: 'fixo', // 'fixo' | 'delivery'
   insumos: [
     { id: uid(), nome: 'Shampoo automotivo', unidade: 'ml', qtdComprada: 1000, valorPago: 0 },
     { id: uid(), nome: 'Cera / selante', unidade: 'ml', qtdComprada: 500, valorPago: 0 },
@@ -32,9 +30,9 @@ const DEFAULT_STATE = {
     { id: uid(), nome: 'Marketing', valor: 0 },
   ],
   servicos: [
-    { id: uid(), nome: 'Lavagem Essencial', categoria: 'lavagem', tempoHoras: 1, custoVariavel: 15, distanciaKm: 0, valorCobrado: 80, exemplo: true },
-    { id: uid(), nome: 'Lavagem Detalhada', categoria: 'lavagem', tempoHoras: 2.5, custoVariavel: 30, distanciaKm: 0, valorCobrado: 180, exemplo: true },
-    { id: uid(), nome: 'Higienização de bancos', categoria: 'higienizacao', tempoHoras: 3, custoVariavel: 40, distanciaKm: 0, valorCobrado: 450, exemplo: true },
+    { id: uid(), nome: 'Lavagem Essencial', categoria: 'lavagem', tempoHoras: 1, custoVariavel: 15, valorCobrado: 80, exemplo: true },
+    { id: uid(), nome: 'Lavagem Detalhada', categoria: 'lavagem', tempoHoras: 2.5, custoVariavel: 30, valorCobrado: 180, exemplo: true },
+    { id: uid(), nome: 'Higienização de bancos', categoria: 'higienizacao', tempoHoras: 3, custoVariavel: 40, valorCobrado: 450, exemplo: true },
   ],
 };
 
@@ -93,9 +91,7 @@ function calcServico(svc) {
   const { totalHora } = calcCustoFixoHora();
   const custoFixo = (Number(svc.tempoHoras) || 0) * totalHora;
   const custoVariavel = Number(svc.custoVariavel) || 0;
-  const isDelivery = state.modoAtendimento === 'delivery';
-  const custoDeslocamento = isDelivery ? (Number(svc.distanciaKm) || 0) * (Number(state.custoKm) || 0) : 0;
-  const custoTotal = custoFixo + custoVariavel + custoDeslocamento;
+  const custoTotal = custoFixo + custoVariavel;
 
   const margemDesejada = (Number(state.margemDesejada) || 0) / 100;
   const precoMinimo = custoTotal;
@@ -110,7 +106,7 @@ function calcServico(svc) {
   const margemReal = valorCobrado > 0 ? lucro / valorCobrado : 0;
 
   return {
-    custoFixo, custoVariavel, custoDeslocamento, custoTotal,
+    custoFixo, custoVariavel, custoTotal,
     precoMinimo, precoSugerido,
     valorCobrado, taxaOp, comissaoVal, impostoVal, recebido, lucro, margemReal,
   };
@@ -295,22 +291,6 @@ function atualizarResultado() {
   renderResultStrip();
 }
 
-// ---------- modo de atendimento ----------
-const modoExplicacoes = {
-  fixo: 'No modo <strong>loja fixa</strong>, o cliente vem até você.',
-  delivery: 'No modo <strong>delivery</strong>, você soma o custo de deslocamento (km) em cada serviço.',
-};
-document.getElementById('modoAtendimento').addEventListener('click', (e) => {
-  const btn = e.target.closest('.seg-btn');
-  if (!btn) return;
-  state.modoAtendimento = btn.dataset.modo;
-  document.querySelectorAll('#modoAtendimento .seg-btn').forEach((b) => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('modoExplicacao').innerHTML = modoExplicacoes[btn.dataset.modo];
-  save();
-  atualizarResultado();
-});
-
 // ---------- botões de ajuda (info) ----------
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.info-btn');
@@ -478,7 +458,7 @@ document.getElementById('btnNovoInsumo').addEventListener('click', () => {
 });
 
 // ---------- TAXAS ----------
-const taxaFields = ['taxaOperacao', 'comissao', 'imposto', 'margemDesejada', 'custoKm'];
+const taxaFields = ['taxaOperacao', 'comissao', 'imposto', 'margemDesejada'];
 taxaFields.forEach((f) => {
   const el = document.getElementById(f);
   el.addEventListener('input', () => {
@@ -514,9 +494,6 @@ function renderResultStrip() {
 function renderServicos() {
   const wrap = document.getElementById('listaServicos');
   wrap.innerHTML = '';
-  document.querySelectorAll('#modoAtendimento .seg-btn').forEach((b) => {
-    b.classList.toggle('active', b.dataset.modo === state.modoAtendimento);
-  });
 
   if (state.servicos.length === 0) {
     wrap.innerHTML = '<div class="empty-state"><strong>Nenhum serviço cadastrado ainda</strong>Toque no botão "+ Novo serviço" abaixo para cadastrar o primeiro.</div>';
@@ -527,11 +504,10 @@ function renderServicos() {
     const calc = calcServico(svc);
     const card = document.createElement('div');
     card.className = 'card svc-card';
-    const isDelivery = state.modoAtendimento === 'delivery';
     card.innerHTML = `
       <div class="svc-head" data-toggle="${svc.id}">
         <div>
-          <div class="svc-title">${escapeHtml(svc.nome)}${svc.exemplo ? '<span class="chip exemplo">exemplo</span>' : ''}${isDelivery && svc.distanciaKm ? `<span class="chip delivery">${svc.distanciaKm} km</span>` : ''}</div>
+          <div class="svc-title">${escapeHtml(svc.nome)}${svc.exemplo ? '<span class="chip exemplo">exemplo</span>' : ''}</div>
           <div class="svc-sub">${svc.tempoHoras}h de trabalho · custo total ${money(calc.custoTotal)}</div>
         </div>
         <div class="svc-price">
@@ -581,9 +557,8 @@ document.getElementById('btnNovoServico').addEventListener('click', () => abrirM
 function abrirModalServico(id) {
   const editando = !!id;
   const svc = editando ? state.servicos.find((s) => s.id === id) : {
-    id: uid(), nome: '', categoria: 'lavagem', tempoHoras: 1, custoVariavel: 0, distanciaKm: 0, valorCobrado: 0,
+    id: uid(), nome: '', categoria: 'lavagem', tempoHoras: 1, custoVariavel: 0, valorCobrado: 0,
   };
-  const isDelivery = state.modoAtendimento === 'delivery';
 
   const root = document.getElementById('modalRoot');
   root.innerHTML = `
@@ -599,7 +574,6 @@ function abrirModalServico(id) {
             </select>
           </div>
           <div class="field-row"><label for="f-tempo">Quanto tempo leva (horas)</label><input type="number" id="f-tempo" min="0" step="0.25" inputmode="decimal" value="${svc.tempoHoras}" /></div>
-          ${isDelivery ? `<div class="field-row"><label for="f-distancia">Distância até o cliente (km, ida e volta)</label><input type="number" id="f-distancia" min="0" step="1" inputmode="numeric" value="${svc.distanciaKm || 0}" /></div>` : ''}
           <div class="field-row"><label for="f-valor">Valor que você cobra do cliente (R$)</label><input type="number" id="f-valor" min="0" step="1" inputmode="decimal" value="${svc.valorCobrado}" /></div>
         </div>
 
@@ -642,7 +616,6 @@ function abrirModalServico(id) {
       nome: document.getElementById('f-nome').value,
       tempoHoras: Number(document.getElementById('f-tempo').value) || 0,
       custoVariavel: calcularCustoVariavelForm(),
-      distanciaKm: isDelivery ? Number(document.getElementById('f-distancia').value) || 0 : 0,
       valorCobrado: Number(document.getElementById('f-valor').value) || 0,
     };
     const c = calcServico(tmp);
@@ -673,7 +646,6 @@ function abrirModalServico(id) {
       custoVariavel: calcularCustoVariavelForm(),
       insumosUsados,
       custoExtra,
-      distanciaKm: isDelivery ? Number(document.getElementById('f-distancia').value) || 0 : (svc.distanciaKm || 0),
       valorCobrado: Number(document.getElementById('f-valor').value) || 0,
     };
     if (editando) {
@@ -1049,8 +1021,6 @@ document.getElementById('btnAjuda').addEventListener('click', abrirOnboard);
 // ---------- init ----------
 function recarregarTudo() {
   preencherTaxas();
-  document.querySelectorAll('#modoAtendimento .seg-btn').forEach((b) => b.classList.toggle('active', b.dataset.modo === state.modoAtendimento));
-  document.getElementById('modoExplicacao').innerHTML = modoExplicacoes[state.modoAtendimento];
   renderCustos();
   renderInsumos();
   renderServicos();

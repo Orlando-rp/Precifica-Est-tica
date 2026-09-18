@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Precifica Estética</title>
-<meta name="description" content="Calculadora de precificação para estética automotiva fixa e delivery" />
+<meta name="description" content="Calculadora de precificação para estética automotiva" />
 <meta name="theme-color" content="#0d1512" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icons/icon-192.png" />
@@ -124,13 +124,6 @@
         </div>
         <p class="info-pop" id="info-margem" hidden>O quanto deve sobrar de lucro sobre o preço final de cada serviço. 40% é um ponto de partida comum na estética automotiva — ajuste conforme sua realidade.</p>
 
-        <div class="field-row">
-          <label>Custo por km rodado no delivery (R$)
-            <button class="info-btn" data-info="info-km" aria-label="O que é isso?">i</button>
-          </label>
-          <input type="number" id="custoKm" min="0" step="0.05" value="1.20" inputmode="decimal" />
-        </div>
-        <p class="info-pop" id="info-km" hidden>Cobre combustível + desgaste do veículo por km rodado (ida e volta) até o cliente. Só é usado no modo Delivery.</p>
       </div>
     </section>
 
@@ -142,14 +135,6 @@
       </div>
 
       <div class="result-strip" id="resultStrip"></div>
-
-      <div class="toolbar">
-        <div class="segmented" id="modoAtendimento">
-          <button class="seg-btn active" data-modo="fixo">🏠 Loja fixa</button>
-          <button class="seg-btn" data-modo="delivery">🚚 Delivery / a domicílio</button>
-        </div>
-        <p class="hint-inline" id="modoExplicacao">No modo <strong>loja fixa</strong>, o cliente vem até você.</p>
-      </div>
 
       <p class="group-label">Toque em um serviço para ver os detalhes</p>
       <div id="listaServicos" class="cards"></div>
