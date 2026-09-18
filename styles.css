@@ -186,7 +186,7 @@ main#views{
   background:var(--surface-2);
   border:1px solid var(--border);border-radius:9px;color:var(--text);
   padding:9px 10px;font-size:15px;font-weight:600;
-  width:104px;flex-shrink:0;text-align:right;
+  width:104px;flex-shrink:0;text-align:center;
   font-variant-numeric: tabular-nums;
 }
 .field-row input[type=text]{width:100%;flex:1 1 140px;text-align:left;font-weight:500;}
