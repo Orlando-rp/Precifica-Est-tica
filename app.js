@@ -65,7 +65,10 @@ function load() {
     // margem de 100% ou mais é impossível: pode ter sido salva assim antes desta correção
     const maxMargem = margemMaximaDe(carregado);
     if (!(Number(carregado.margemDesejada) >= 0)) carregado.margemDesejada = DEFAULT_STATE.margemDesejada;
-    if (Number(carregado.margemDesejada) > maxMargem) carregado.margemDesejada = maxMargem;
+    // volta para o padrão, não para o teto: perto do teto o preço sugerido dispara
+    if (Number(carregado.margemDesejada) > maxMargem) {
+      carregado.margemDesejada = Math.min(DEFAULT_STATE.margemDesejada, maxMargem);
+    }
     return carregado;
   } catch (e) {
     console.warn('Falha ao carregar dados salvos, usando padrão.', e);
@@ -496,29 +499,51 @@ function margemMaxima() {
   return margemMaximaDe(state);
 }
 
+// quantas vezes o custo o preço sugerido representa, com a margem atual
+function vezesOCusto(margemPct) {
+  const sobra = 1 - (Number(margemPct) || 0) / 100 - deducoesAtuais();
+  return sobra > 0 ? 1 / sobra : Infinity;
+}
+
+// margem que corresponde a "cobrar k vezes o custo"
+function margemParaVezes(k) {
+  return Math.round((1 - deducoesAtuais() - 1 / k) * 100);
+}
+
 function atualizarDicaMargem() {
   const el = document.getElementById('dicaMargem');
   if (!el) return;
   const max = margemMaxima();
-  const m = (Number(state.margemDesejada) || 0) / 100;
-  const sobra = 1 - m - deducoesAtuais();
-  if (m <= 0 || sobra <= 0) {
+  const m = Number(state.margemDesejada) || 0;
+  if (m <= 0 || vezesOCusto(m) === Infinity) {
     el.textContent = `Máximo possível com suas taxas: ${max}%.`;
     return;
   }
-  const vezes = (1 / sobra).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  el.textContent = `Equivale a cobrar ${vezes}× o custo · máximo possível com suas taxas: ${max}%`;
+  const vezes = vezesOCusto(m);
+  const texto = `Equivale a cobrar ${vezes.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}× o custo`;
+  // perto do teto o preço dispara, então vale o aviso
+  el.textContent = vezes > 10 ? `⚠️ ${texto} — confira se é isso mesmo` : texto;
 }
 
-// 100% (ou mais) é impossível: corrige ao sair do campo e explica o porquê
+// A margem é uma fatia do preço: 100% (ou mais) não existe. Como perto do teto o
+// preço dispara (94% = 100× o custo), não adianta grudar no máximo: melhor manter
+// o último valor que fazia sentido e dizer qual margem dá o preço que a pessoa quer.
+let ultimaMargemValida = Number(state.margemDesejada) || DEFAULT_STATE.margemDesejada;
+
 function limitarMargem() {
   const max = margemMaxima();
-  if ((Number(state.margemDesejada) || 0) > max) {
-    state.margemDesejada = max;
-    document.getElementById('margemDesejada').value = max;
+  const digitada = Number(state.margemDesejada) || 0;
+  if (digitada > max) {
+    state.margemDesejada = ultimaMargemValida;
+    document.getElementById('margemDesejada').value = ultimaMargemValida;
     save();
     atualizarResultado();
-    mostrarToast(`A margem é uma fatia do preço, então não chega a 100%. Com suas taxas, o máximo é ${max}% — ajustado. Para cobrar várias vezes o custo, toque no "i".`);
+    mostrarToast(
+      `${digitada}% não existe: a margem é uma fatia do preço, e o custo precisa caber no resto. Mantive ${ultimaMargemValida}%. ` +
+      `Para cobrar o dobro do custo use ${margemParaVezes(2)}%, o triplo ${margemParaVezes(3)}%, 6 vezes ${margemParaVezes(6)}%.`
+    );
+  } else {
+    ultimaMargemValida = digitada;
   }
   atualizarDicaMargem();
 }
