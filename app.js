@@ -93,14 +93,25 @@ function calcServico(svc) {
   const custoVariavel = Number(svc.custoVariavel) || 0;
   const custoTotal = custoFixo + custoVariavel;
 
+  const taxa = (Number(state.taxaOperacao) || 0) / 100;
+  const comissao = (Number(state.comissao) || 0) / 100;
+  const imposto = (Number(state.imposto) || 0) / 100;
+  // fatia do valor cobrado que nunca chega na sua mão (maquininha, comissão, imposto).
+  // A comissão incide sobre o que sobra depois da maquininha, igual ao cálculo do recebido.
+  const deducoes = taxa + (1 - taxa) * comissao + imposto;
+
   const margemDesejada = (Number(state.margemDesejada) || 0) / 100;
-  const precoMinimo = custoTotal;
-  const precoSugerido = margemDesejada < 1 ? custoTotal / (1 - margemDesejada) : custoTotal;
+  // preço de empate: o que você RECEBE precisa cobrir o custo, não o que você cobra
+  const precoMinimo = deducoes < 1 ? custoTotal / (1 - deducoes) : custoTotal;
+  // preço que deixa a margem pedida DEPOIS de descontadas as taxas
+  const precoSugerido = (margemDesejada + deducoes) < 1
+    ? custoTotal / (1 - margemDesejada - deducoes)
+    : precoMinimo;
 
   const valorCobrado = Number(svc.valorCobrado) || 0;
-  const taxaOp = valorCobrado * ((Number(state.taxaOperacao) || 0) / 100);
-  const comissaoVal = (valorCobrado - taxaOp) * ((Number(state.comissao) || 0) / 100);
-  const impostoVal = valorCobrado * ((Number(state.imposto) || 0) / 100);
+  const taxaOp = valorCobrado * taxa;
+  const comissaoVal = (valorCobrado - taxaOp) * comissao;
+  const impostoVal = valorCobrado * imposto;
   const recebido = valorCobrado - taxaOp - comissaoVal - impostoVal;
   const lucro = recebido - custoTotal;
   const margemReal = valorCobrado > 0 ? lucro / valorCobrado : 0;
@@ -477,8 +488,12 @@ function renderResultStrip() {
   if (state.servicos.length === 0) { wrap.innerHTML = ''; return; }
 
   const servicosCalc = state.servicos.map((s) => ({ svc: s, calc: calcServico(s) }));
-  const ticketMedio = servicosCalc.reduce((s, x) => s + x.calc.valorCobrado, 0) / servicosCalc.length;
-  const lucroMedio = servicosCalc.reduce((s, x) => s + x.calc.margemReal, 0) / servicosCalc.length;
+  const faturamento = servicosCalc.reduce((s, x) => s + x.calc.valorCobrado, 0);
+  const lucroTotal = servicosCalc.reduce((s, x) => s + x.calc.lucro, 0);
+  const ticketMedio = faturamento / servicosCalc.length;
+  // lucro total sobre faturamento total: a média simples dos percentuais daria o mesmo
+  // peso a um serviço de R$ 80 e a um de R$ 450
+  const lucroMedio = faturamento > 0 ? lucroTotal / faturamento : 0;
   const abaixoMinimo = servicosCalc.filter((x) => x.calc.valorCobrado < x.calc.precoMinimo);
 
   wrap.innerHTML = `
@@ -517,8 +532,8 @@ function renderServicos() {
       </div>
       <div class="svc-body" id="body-${svc.id}" style="display:none">
         <div class="svc-grid">
-          <div class="mini-stat"><div class="k">Preço mínimo (não venda abaixo)</div><div class="v">${money(calc.precoMinimo)}</div></div>
-          <div class="mini-stat"><div class="k">Preço sugerido (margem de ${state.margemDesejada}%)</div><div class="v">${money(calc.precoSugerido)}</div></div>
+          <div class="mini-stat"><div class="k">Preço mínimo (empata, já com as taxas)</div><div class="v">${money(calc.precoMinimo)}</div></div>
+          <div class="mini-stat"><div class="k">Preço sugerido (sobram ${state.margemDesejada}% depois das taxas)</div><div class="v">${money(calc.precoSugerido)}</div></div>
           <div class="mini-stat"><div class="k">Você recebe líquido</div><div class="v">${money(calc.recebido)}</div></div>
           <div class="mini-stat"><div class="k">Lucro final</div><div class="v">${money(calc.lucro)}</div></div>
         </div>

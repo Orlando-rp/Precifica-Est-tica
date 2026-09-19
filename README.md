@@ -73,9 +73,11 @@ Na primeira vez o app roda essas telas como um passo a passo guiado (`ORDEM_PASS
 1. **Custos fixos mensais** (aluguel, combustível, produtos, telefone, MEI, seguro, manutenção, marketing) são somados e divididos por dias trabalhados/mês e depois por horas/dia → **custo fixo por hora**.
 2. Cada serviço tem um **tempo em horas** → `custo fixo do serviço = tempo × custo fixo por hora`.
 3. Soma-se o **custo variável** — os produtos usados naquele serviço, calculados pelo custo por unidade de cada insumo, mais "Outros produtos/custos" → **custo total**.
-4. **Preço mínimo** = custo total (abaixo disso é prejuízo).
-5. **Preço sugerido** = `custo total ÷ (1 − margem desejada %)` — markup sobre o preço final, mais preciso que "custo × multiplicador fixo".
-6. Sobre o **valor efetivamente cobrado**, descontam-se taxa de cartão, comissão e imposto → **recebido líquido** → **lucro** e **% de lucro real**.
+4. Taxa da maquininha, comissão e imposto formam as **deduções**: a fatia do valor cobrado que nunca chega na sua mão. A comissão incide sobre o que sobra depois da maquininha — `deduções = taxa + (1 − taxa) × comissão + imposto`.
+5. **Preço mínimo** = `custo total ÷ (1 − deduções)` — o preço em que o **recebido** empata com o custo. Cobrar só o custo dá prejuízo, porque as taxas saem antes.
+6. **Preço sugerido** = `custo total ÷ (1 − margem desejada − deduções)` — assim a margem pedida sobra **depois** das taxas, e não é comida por elas.
+7. Sobre o **valor efetivamente cobrado**, descontam-se taxa de cartão, comissão e imposto → **recebido líquido** → **lucro** e **% de lucro real** (`lucro ÷ valor cobrado`).
+8. A **margem média** da faixa de resumo é `lucro total ÷ faturamento total` — ponderada, não a média simples dos percentuais (que daria o mesmo peso a um serviço de R$ 80 e a um de R$ 450).
 
 ### Atendimento a domicílio
 
