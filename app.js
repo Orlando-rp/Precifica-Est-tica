@@ -62,6 +62,10 @@ function load() {
     // o campo pode ter sido salvo vazio enquanto a pessoa digitava
     if (!(Number(carregado.diasUteis) >= 1)) carregado.diasUteis = DEFAULT_STATE.diasUteis;
     if (!(Number(carregado.horasDia) >= 1)) carregado.horasDia = DEFAULT_STATE.horasDia;
+    // margem de 100% ou mais é impossível: pode ter sido salva assim antes desta correção
+    const maxMargem = margemMaximaDe(carregado);
+    if (!(Number(carregado.margemDesejada) >= 0)) carregado.margemDesejada = DEFAULT_STATE.margemDesejada;
+    if (Number(carregado.margemDesejada) > maxMargem) carregado.margemDesejada = maxMargem;
     return carregado;
   } catch (e) {
     console.warn('Falha ao carregar dados salvos, usando padrão.', e);
@@ -85,6 +89,19 @@ function calcCustoFixoHora() {
   const totalDia = totalMes / dias;
   const totalHora = totalDia / horas;
   return { totalMes, totalDia, totalHora };
+}
+
+function deducoesDe(estado) {
+  const taxa = (Number(estado.taxaOperacao) || 0) / 100;
+  const comissao = (Number(estado.comissao) || 0) / 100;
+  const imposto = (Number(estado.imposto) || 0) / 100;
+  return taxa + (1 - taxa) * comissao + imposto;
+}
+
+// A margem é uma fatia do preço: 100% significaria custo zero. O que sobra para
+// ela é o que as taxas não levam, menos uma folga para o preço não disparar.
+function margemMaximaDe(estado) {
+  return Math.max(1, Math.floor((1 - deducoesDe(estado)) * 100) - 1);
 }
 
 function calcServico(svc) {
@@ -470,16 +487,56 @@ document.getElementById('btnNovoInsumo').addEventListener('click', () => {
 
 // ---------- TAXAS ----------
 const taxaFields = ['taxaOperacao', 'comissao', 'imposto', 'margemDesejada'];
+
+function deducoesAtuais() {
+  return deducoesDe(state);
+}
+
+function margemMaxima() {
+  return margemMaximaDe(state);
+}
+
+function atualizarDicaMargem() {
+  const el = document.getElementById('dicaMargem');
+  if (!el) return;
+  const max = margemMaxima();
+  const m = (Number(state.margemDesejada) || 0) / 100;
+  const sobra = 1 - m - deducoesAtuais();
+  if (m <= 0 || sobra <= 0) {
+    el.textContent = `Máximo possível com suas taxas: ${max}%.`;
+    return;
+  }
+  const vezes = (1 / sobra).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  el.textContent = `Equivale a cobrar ${vezes}× o custo · máximo possível com suas taxas: ${max}%`;
+}
+
+// 100% (ou mais) é impossível: corrige ao sair do campo e explica o porquê
+function limitarMargem() {
+  const max = margemMaxima();
+  if ((Number(state.margemDesejada) || 0) > max) {
+    state.margemDesejada = max;
+    document.getElementById('margemDesejada').value = max;
+    save();
+    atualizarResultado();
+    mostrarToast(`A margem é uma fatia do preço, então não chega a 100%. Com suas taxas, o máximo é ${max}% — ajustado. Para cobrar várias vezes o custo, toque no "i".`);
+  }
+  atualizarDicaMargem();
+}
+
 taxaFields.forEach((f) => {
   const el = document.getElementById(f);
   el.addEventListener('input', () => {
     state[f] = Number(el.value) || 0;
     save();
+    atualizarDicaMargem();
     atualizarResultado();
   });
+  // as taxas mudam o teto da margem, então qualquer um dos campos revalida
+  el.addEventListener('blur', limitarMargem);
 });
 function preencherTaxas() {
   taxaFields.forEach((f) => { document.getElementById(f).value = state[f]; });
+  atualizarDicaMargem();
 }
 
 // ---------- RESULTADO: faixa de resumo ----------

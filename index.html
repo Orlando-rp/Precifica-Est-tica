@@ -120,9 +120,12 @@
           <label>Margem de lucro que você quer (%)
             <button class="info-btn" data-info="info-margem" aria-label="O que é isso?">i</button>
           </label>
-          <input type="number" id="margemDesejada" min="0" step="1" value="40" inputmode="decimal" />
+          <input type="number" id="margemDesejada" min="0" max="99" step="1" value="40" inputmode="decimal" />
         </div>
-        <p class="info-pop" id="info-margem" hidden>O quanto deve sobrar de lucro sobre o preço final de cada serviço, já descontadas as taxas acima. 40% é um ponto de partida comum na estética automotiva — ajuste conforme sua realidade.</p>
+        <p class="hint-inline" id="dicaMargem" style="text-align:left;margin:-2px 0 0">—</p>
+        <p class="info-pop" id="info-margem" hidden>O quanto deve sobrar de lucro <strong>sobre o preço final</strong> de cada serviço, já descontadas as taxas acima. 40% é um ponto de partida comum na estética automotiva.<br /><br />
+          Como é uma fatia do preço, ela <strong>não chega a 100%</strong>: 100% significaria que o serviço não te custa nada. O máximo depende das suas taxas, e a linha acima mostra qual é o seu.<br /><br />
+          Se o que você quer é <strong>cobrar várias vezes o custo</strong>, isso é outra conta. Sem contar taxas: o <strong>dobro</strong> do custo = 50% de margem · o <strong>triplo</strong> = 67% · <strong>6 vezes</strong> = 83% · <strong>10 vezes</strong> = 90%. Suas taxas puxam esses números um pouco para baixo — a linha acima mostra a conta exata, com quantas vezes o custo o seu preço sugerido representa.</p>
 
       </div>
     </section>
