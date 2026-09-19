@@ -5,6 +5,12 @@
 const STORAGE_KEY = 'precifica_estetica_v1';
 const ONBOARD_KEY = 'precifica_estetica_onboarded';
 
+// A margem é uma fatia do preço: 100% significaria custo zero. Só que o limite
+// matemático não serve como teto — perto dele o preço dispara (94% = 100x o
+// custo). O teto útil é o que mantém o preço sugerido em no máximo 10x o custo.
+// Precisa ser declarada aqui: load() roda antes do resto do arquivo.
+const MAX_VEZES_O_CUSTO = 10;
+
 const DEFAULT_STATE = {
   setupConcluido: false,
   diasUteis: 25,
@@ -101,10 +107,8 @@ function deducoesDe(estado) {
   return taxa + (1 - taxa) * comissao + imposto;
 }
 
-// A margem é uma fatia do preço: 100% significaria custo zero. O que sobra para
-// ela é o que as taxas não levam, menos uma folga para o preço não disparar.
 function margemMaximaDe(estado) {
-  return Math.max(1, Math.floor((1 - deducoesDe(estado)) * 100) - 1);
+  return Math.max(1, Math.floor((1 - deducoesDe(estado) - 1 / MAX_VEZES_O_CUSTO) * 100));
 }
 
 function calcServico(svc) {
@@ -521,8 +525,7 @@ function atualizarDicaMargem() {
   }
   const vezes = vezesOCusto(m);
   const texto = `Equivale a cobrar ${vezes.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}× o custo`;
-  // perto do teto o preço dispara, então vale o aviso
-  el.textContent = vezes > 10 ? `⚠️ ${texto} — confira se é isso mesmo` : texto;
+  el.textContent = vezes > 5 ? `⚠️ ${texto} — bem acima do custo, confira se é isso mesmo` : texto;
 }
 
 // A margem é uma fatia do preço: 100% (ou mais) não existe. Como perto do teto o
@@ -539,7 +542,7 @@ function limitarMargem() {
     save();
     atualizarResultado();
     mostrarToast(
-      `${digitada}% não existe: a margem é uma fatia do preço, e o custo precisa caber no resto. Mantive ${ultimaMargemValida}%. ` +
+      `Com ${digitada}% o preço sugerido passaria de ${MAX_VEZES_O_CUSTO}× o custo. Mantive ${ultimaMargemValida}%. ` +
       `Para cobrar o dobro do custo use ${margemParaVezes(2)}%, o triplo ${margemParaVezes(3)}%, 6 vezes ${margemParaVezes(6)}%.`
     );
   } else {
